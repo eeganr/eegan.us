@@ -11,9 +11,6 @@ function switchVisible() {
             }
 }
 
-/**
- * requestAnimationFrame
- */
 window.requestAnimationFrame = (function(){
     return  window.requestAnimationFrame       ||
             window.webkitRequestAnimationFrame ||
@@ -26,32 +23,15 @@ window.requestAnimationFrame = (function(){
 })();
 
 
-/**
- * Vector
- */
 function Vector(x, y) {
     this.x = x || 0;
     this.y = y || 0;
 }
 
-Vector.add = function(a, b) {
-    return new Vector(a.x + b.x, a.y + b.y);
-};
-
-Vector.sub = function(a, b) {
-    return new Vector(a.x - b.x, a.y - b.y);
-};
-
 Vector.scale = function(v, s) {
     return v.clone().scale(s);
 };
 
-Vector.random = function() {
-    return new Vector(
-        Math.random() * 2 - 1,
-        Math.random() * 2 - 1
-    );
-};
 
 Vector.prototype = {
     set: function(x, y) {
@@ -70,12 +50,6 @@ Vector.prototype = {
         return this;
     },
 
-    sub: function(v) {
-        this.x -= v.x;
-        this.y -= v.y;
-        return this;
-    },
-
     scale: function(s) {
         this.x *= s;
         this.y *= s;
@@ -86,10 +60,6 @@ Vector.prototype = {
         return Math.sqrt(this.x * this.x + this.y * this.y);
     },
 
-    lengthSq: function() {
-        return this.x * this.x + this.y * this.y;
-    },
-
     normalize: function() {
         var m = Math.sqrt(this.x * this.x + this.y * this.y);
         if (m) {
@@ -98,186 +68,7 @@ Vector.prototype = {
         }
         return this;
     },
-
-    angle: function() {
-        return Math.atan2(this.y, this.x);
-    },
-
-    angleTo: function(v) {
-        var dx = v.x - this.x,
-            dy = v.y - this.y;
-        return Math.atan2(dy, dx);
-    },
-
-    distanceTo: function(v) {
-        var dx = v.x - this.x,
-            dy = v.y - this.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    },
-
-    distanceToSq: function(v) {
-        var dx = v.x - this.x,
-            dy = v.y - this.y;
-        return dx * dx + dy * dy;
-    },
-
-    lerp: function(v, t) {
-        this.x += (v.x - this.x) * t;
-        this.y += (v.y - this.y) * t;
-        return this;
-    },
-
-    clone: function() {
-        return new Vector(this.x, this.y);
-    },
-
-    toString: function() {
-        return '(x:' + this.x + ', y:' + this.y + ')';
-    }
 };
-
-
-/**
- * GravityPoint
- */
-function GravityPoint(x, y, radius, targets) {
-    Vector.call(this, x, y);
-    this.radius = radius;
-    this.currentRadius = radius * 0.5;
-
-    this._targets = {
-        particles: targets.particles || [],
-        gravities: targets.gravities || []
-    };
-    this._speed = new Vector();
-}
-
-GravityPoint.RADIUS_LIMIT = 65;
-GravityPoint.interferenceToPoint = true;
-
-GravityPoint.prototype = (function(o) {
-    var s = new Vector(0, 0), p;
-    for (p in o) s[p] = o[p];
-    return s;
-})({
-    gravity:       0.05,
-    isMouseOver:   false,
-    dragging:      false,
-    destroyed:     false,
-    _easeRadius:   0,
-    _dragDistance: null,
-    _collapsing:   false,
-
-    hitTest: function(p) {
-        return this.distanceTo(p) < this.radius;
-    },
-
-    startDrag: function(dragStartPoint) {
-        this._dragDistance = Vector.sub(dragStartPoint, this);
-        this.dragging = true;
-    },
-
-    drag: function(dragToPoint) {
-        this.x = dragToPoint.x - this._dragDistance.x;
-        this.y = dragToPoint.y - this._dragDistance.y;
-    },
-
-    endDrag: function() {
-        this._dragDistance = null;
-        this.dragging = false;
-    },
-
-    addSpeed: function(d) {
-        this._speed = this._speed.add(d);
-    },
-
-    collapse: function(e) {
-        this.currentRadius *= 1.75;
-        this._collapsing = true;
-    },
-
-    render: function(ctx) {
-        if (this.destroyed) return;
-
-        var particles = this._targets.particles,
-            i, len;
-
-        for (i = 0, len = particles.length; i < len; i++) {
-            particles[i].addSpeed(Vector.sub(this, particles[i]).normalize().scale(this.gravity));
-        }
-
-        this._easeRadius = (this._easeRadius + (this.radius - this.currentRadius) * 0.07) * 0.95;
-        this.currentRadius += this._easeRadius;
-        if (this.currentRadius < 0) this.currentRadius = 0;
-
-        if (this._collapsing) {
-            this.radius *= 0.75;
-            if (this.currentRadius < 1) this.destroyed = true;
-            this._draw(ctx);
-            return;
-        }
-
-        var gravities = this._targets.gravities,
-            g, absorp,
-            area = this.radius * this.radius * Math.PI, garea;
-
-        for (i = 0, len = gravities.length; i < len; i++) {
-            g = gravities[i];
-
-            if (g === this || g.destroyed) continue;
-
-            if (
-                (this.currentRadius >= g.radius || this.dragging) &&
-                this.distanceTo(g) < (this.currentRadius + g.radius) * 0.85
-            ) {
-                g.destroyed = true;
-                this.gravity += g.gravity;
-
-                absorp = Vector.sub(g, this).scale(g.radius / this.radius * 0.5);
-                this.addSpeed(absorp);
-
-                garea = g.radius * g.radius * Math.PI;
-                this.currentRadius = Math.sqrt((area + garea * 3) / Math.PI);
-                this.radius = Math.sqrt((area + garea) / Math.PI);
-            }
-
-            g.addSpeed(Vector.sub(this, g).normalize().scale(this.gravity));
-        }
-
-        if (GravityPoint.interferenceToPoint && !this.dragging)
-            this.add(this._speed);
-
-        this._speed = new Vector();
-
-        if (this.currentRadius > GravityPoint.RADIUS_LIMIT) this.collapse();
-
-        this._draw(ctx);
-    },
-
-    _draw: function(ctx) {
-        var grd, r;
-
-        ctx.save();
-
-        grd = ctx.createRadialGradient(this.x, this.y, this.radius, this.x, this.y, this.radius * 5);
-        grd.addColorStop(0, 'rgba(0, 0, 0, 0.1)');
-        grd.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius * 5, 0, Math.PI * 2, false);
-        ctx.fillStyle = grd;
-        ctx.fill();
-
-        r = Math.random() * this.currentRadius * 0.7 + this.currentRadius * 0.3;
-        grd = ctx.createRadialGradient(this.x, this.y, r, this.x, this.y, this.currentRadius);
-        grd.addColorStop(0, 'rgba(0, 0, 0, 1)');
-        grd.addColorStop(1, Math.random() < 0.2 ? 'rgba(43, 57, 84, 0.15)' : 'rgba(64, 97, 163, 0.75)');
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.currentRadius, 0, Math.PI * 2, false);
-        ctx.fillStyle = grd;
-        ctx.fill();
-        ctx.restore();
-    }
-});
 
 
 function Particle(x, y, radius) {
@@ -311,20 +102,15 @@ Particle.prototype = (function(o) {
 
     // Configs
     var BACKGROUND_COLOR      = 'rgba(69, 74, 77, 1)',
-        PARTICLE_RADIUS       = 1,
-        G_POINT_RADIUS        = 10,
-        G_POINT_RADIUS_LIMITS = 65;
+        PARTICLE_RADIUS       = 2;
 
 
     // Vars
     var canvas, context,
         bufferCvs, bufferCtx,
         screenWidth, screenHeight,
-        mouse = new Vector(),
-        gravities = [],
         particles = [],
-        grad,
-        gui, control;
+        grad;
 
 
     // Event Listeners
@@ -344,80 +130,42 @@ Particle.prototype = (function(o) {
         grad.addColorStop(1, 'rgba(0, 0, 0, 0.75)');
     }
 
-    function mouseMove(e) {
-        mouse.set(e.clientX, e.clientY);
+    function scram(e) {
 
-        var i, g, hit = false;
-        for (i = gravities.length - 1; i >= 0; i--) {
-            g = gravities[i];
-            if ((!hit && g.hitTest(mouse)) || g.dragging)
-                g.isMouseOver = hit = true;
-            else
-                g.isMouseOver = false;
-        }
-
-        canvas.style.cursor = hit ? 'pointer' : 'default';
-    }
-
-    function mouseDown(e) {
-        for (var i = gravities.length - 1; i >= 0; i--) {
-            if (gravities[i].isMouseOver) {
-                gravities[i].startDrag(mouse);
-                return;
-            }
-        }
-        gravities.push(new GravityPoint(e.clientX, e.clientY, G_POINT_RADIUS, {
-            particles: particles,
-            gravities: gravities
-        }));
-    }
-
-    function mouseUp(e) {
-        for (var i = 0, len = gravities.length; i < len; i++) {
-            if (gravities[i].dragging) {
-                gravities[i].endDrag();
-                break;
-            }
-        }
-    }
-
-    function doubleClick(e) {
-        for (var i = gravities.length - 1; i >= 0; i--) {
-            if (gravities[i].isMouseOver) {
-                gravities[i].collapse();
-                break;
+        for (i=0; i<particles.length; i++) {
+            if (Math.hypot(particles[i].x - e.clientX, particles[i].y - e.clientY) < 100) {
+                particles[i]._speed = new Vector(particles[i].x - e.clientX , particles[i].y - e.clientY).normalize().scale(10);
             }
         }
     }
 
 
-    // Functions
-    function addParticle(num) {
+
+    function addInitialParticles(num) {
         var i, p;
         for (i = 0; i < num; i++) {
             p = new Particle(
-                Math.floor(Math.random() * screenWidth - PARTICLE_RADIUS * 2) + 1 + PARTICLE_RADIUS,
-                Math.floor(Math.random() * screenHeight - PARTICLE_RADIUS * 2) + 1 + PARTICLE_RADIUS,
+                Math.floor((Math.random() * screenWidth - PARTICLE_RADIUS * 2)) + 1 + PARTICLE_RADIUS,
+                Math.floor((Math.random() * screenHeight - PARTICLE_RADIUS * 2)) + 1 + PARTICLE_RADIUS,
                 PARTICLE_RADIUS
             );
-            p.addSpeed(Vector.random());
+            p.addSpeed(new Vector(Math.random()/2, Math.random()+0.2));
             particles.push(p);
         }
     }
 
-    function removeParticle(num) {
-        if (particles.length < num) num = particles.length;
-        for (var i = 0; i < num; i++) {
-            particles.pop();
+    function addParticle(num) {
+        var i, p;
+        for (i = 0; i < num; i++) {
+            p = new Particle(
+                Math.floor((Math.random() * screenWidth - PARTICLE_RADIUS * 2)) + 1 + PARTICLE_RADIUS,
+                - PARTICLE_RADIUS,
+                PARTICLE_RADIUS
+            );
+            p.addSpeed(new Vector(Math.random()/2, Math.random()));
+            particles.push(p);
         }
     }
-
-
-    // GUI Control
-    control = {
-        particleNum: 520
-    };
-
 
     // Init
     canvas  = document.getElementById('c');
@@ -426,12 +174,9 @@ Particle.prototype = (function(o) {
     window.addEventListener('resize', resize, false);
     resize(null);
 
-    addParticle(control.particleNum);
+    addInitialParticles(1000);
 
-    canvas.addEventListener('mousemove', mouseMove, false);
-    canvas.addEventListener('mousedown', mouseDown, false);
-    canvas.addEventListener('mouseup', mouseUp, false);
-    canvas.addEventListener('dblclick', doubleClick, false);
+    canvas.addEventListener('mousedown', scram, false);
 
     var loop = function() {
         var i, len, g, p;
@@ -443,14 +188,12 @@ Particle.prototype = (function(o) {
         context.fillRect(0, 0, screenWidth, screenHeight);
         context.restore();
 
-        for (i = 0, len = gravities.length; i < len; i++) {
-            g = gravities[i];
-            if (g.dragging) g.drag(mouse);
-            g.render(context);
-            if (g.destroyed) {
-                gravities.splice(i, 1);
-                len--;
-                i--;
+        addParticle(1);
+
+        for (i = 0, len = particles.length; i < len; i++) {
+            if (particles[i].y > screenHeight || particles[i].x > screenWidth || particles[i].x < -10 || particles[i].y < -10) {
+                particles.splice(i, 1);
+                break;
             }
         }
 
