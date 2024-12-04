@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chicago Style Footnotes</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,15 +10,16 @@
             line-height: 1.6;
         }
         .footnotes {
-            margin-top: 40px;
-            border-top: 1px solid #ccc;
+            margin-top: 10px;
             padding-top: 10px;
         }
         .footnotes ol {
             padding-left: 20px;
+            text-indent: 30px;
         }
         .footnotes li {
             margin-bottom: 10px;
+            text-indent: 30px;
         }
         .button {
             background-color: #04AA6D;
@@ -42,17 +42,15 @@
 <body>
     <button onclick="toggleFootnotes()" class="button">Toggle Footnotes</button>
     <div class="footnotes" id="footnotes" style="display: none;">
-        <h2>Footnotes</h2>
         <ol start="1">
             <li id="fn1">
-                Kate L. Turabian, <i>A Manual for Writers of Research Papers, Theses, and Dissertations</i>, 9th ed. (Chicago: University of Chicago Press, 2018). 
-                <a href="#note1">↩</a>
+                Kate L. Turabian, <i>A Manual for Writers of Research Papers, Theses, and Dissertations</i>, 9th ed. (Chicago: University of Chicago Press, 2018).
             </li>
             <li id="fn2">
-                University of Chicago Press, <i>The Chicago Manual of Style</i>, 17th ed. (Chicago: University of Chicago Press, 2017). 
-                <a href="#note2">↩</a>
+                University of Chicago Press, <i>The Chicago Manual of Style</i>, 17th ed. (Chicago: University of Chicago Press, 2017).
             </li>
         </ol>
     </div>
+
 </body>
 </html>
